@@ -1,26 +1,20 @@
 import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
 import java.util.Scanner;
 
-// commentleme 
-
 // github açma?
 
-// history kaydetme işi, file oluşturuyor ama yanlış şekilde, bir de yöntem düzeltmek gerekebilir
-
-// computer mantıklı oynamalıymış, random değil
-
-// bilgisayarın elini gizleme (kart sayısı kadar X)
-
-// henüz sadece bir set için program 
 // The first player to win three sets is the winner. 
-// However, if one of the players uses all blue cards to get a score of 20,they automatically win the game. 
+// However, if one of the players uses all blue cards to get a score of 20, they automatically win the game. 
+
+// file log
 
 public class BluejackGame {
-
     private static int DECK_SIZE = 40;
     private static int BOARD_SIZE = 10;
     private static int HAND_SIZE = 4;
@@ -39,10 +33,8 @@ public class BluejackGame {
 
     static Random random = new Random();
     private static String name = "";
-    private static List<GameHistory> gameHistoryList = new ArrayList<>(); // array list kullanabilir miyim
     
     public static void main(String[] args) {
-        
         Scanner scan = new Scanner( System.in);
 
         initializeGameDeck();
@@ -57,7 +49,7 @@ public class BluejackGame {
         System.out.println("\n--------------------\n");
 
         System.out.println("Computer Deck");
-        printDeck(computerDeck);
+        printComputerDeck(computerDeck);
 
         System.out.println("\n" + name + "'s Deck:");
         printDeck(userDeck);
@@ -73,8 +65,12 @@ public class BluejackGame {
         calculateWinner();
 
         /////buradaki set-game ilişkisini halletmek lazım önce
-
-        saveGameHistoryToFile(name, userScore, computerScore);
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter("game_history.txt"))) {
+            saveGameHistoryToFile(name, userScore, computerScore);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        scan.close();
     }
 
     private static void initializeGameDeck() {
@@ -211,6 +207,17 @@ public class BluejackGame {
         }
     }
 
+    private static void printComputerDeck(Card[] deck) {
+        int n=1;
+        for (Card card : deck) {
+            if (card != null ) {
+                System.out.print(n + "- ");
+                System.out.println("X ");
+                n++;
+            }
+        }
+    }
+
     private static Card[] playCard(int cardIndex, Card[] hand, Card[] board) {
         int arrayIndex = cardIndex - 1;
 
@@ -301,7 +308,6 @@ public class BluejackGame {
     }
 
     private static void playRound(){
-
         Scanner scan = new Scanner( System.in);
         int selection;
 
@@ -317,16 +323,14 @@ public class BluejackGame {
 
         do
         {
-
             if (isGameOver())
                 break;
 
             System.out.println();
 
             System.out.println("Computer Hand: ");
-            printDeck(computerHand); // gizlemek için burada değişiklik yapılabilir, şimdilik bilerek yapmıyorum
+            printComputerDeck(computerHand);
             System.out.println();
-
             
             System.out.println("Computer Board: ");
             printDeck(computerBoard);
@@ -343,7 +347,6 @@ public class BluejackGame {
             Card card = randomCard();
 
             // display menu
-
             for (int i = 1; i <= userHand.length; i++) {
                 System.out.println( i + " - to play card " + i  );
             }
@@ -360,22 +363,22 @@ public class BluejackGame {
             // process selection
             if ( selection == MENU_PLAY_1 && userHand.length>=1){
                 userHand = playCard(1, userHand, userBoard);
-                computerHand = playCard(random.nextInt(HAND_SIZE), computerHand, computerBoard);
+                computerPlays();
                 showScores();
             }
             else if ( selection == MENU_PLAY_2  && userHand.length>=2 ){
                 userHand = playCard(2, userHand, userBoard);
-                computerHand = playCard(random.nextInt(HAND_SIZE), computerHand, computerBoard);
+                computerPlays();
                 showScores();
             }
             else if ( selection == MENU_PLAY_3  && userHand.length>=3 ){
                 userHand = playCard(3, userHand, userBoard);
-                computerHand = playCard(random.nextInt(HAND_SIZE), computerHand, computerBoard);
+                computerPlays();
                 showScores();
             }
             else if ( selection == MENU_PLAY_4  && userHand.length>=4 ){
                 userHand = playCard(4, userHand, userBoard);
-                computerHand = playCard(random.nextInt(HAND_SIZE), computerHand, computerBoard);
+                computerPlays();
                 showScores();
             }
             else if ( selection == MENU_PLAY_RANDOM && userHand.length > 0){
@@ -385,15 +388,14 @@ public class BluejackGame {
                         break;
                     }
                 }
-                computerHand = playCard(random.nextInt(HAND_SIZE), computerHand, computerBoard);
                 showScores();
             }
             else if ( selection == MENU_END){
-                computerHand = playCard(random.nextInt(HAND_SIZE), computerHand, computerBoard);
+                computerPlays();
             }
             else if ( selection == MENU_STAND ){
                 while (computerHand.length>0 && !computerStand()){
-                    computerHand = playCard(random.nextInt(HAND_SIZE), computerHand, computerBoard);
+                    computerPlays();
                 }
             } 
             else if ( selection == MENU_SCORES )
@@ -429,32 +431,119 @@ public class BluejackGame {
     }
 
     private static void computerPlays(){
-        //to-do, mantıklı oynaması lazım
+        // Strategy for selecting a card
+        Card selectedCard = selectBestCardForComputer();
+
+        // Play the selected card
+        if (selectedCard != null) {
+            // Assuming playCard takes the index of the card in hand and the board to play on
+            int cardIndexInHand = findCardIndexInHand(selectedCard, computerHand);
+            computerHand = playCard(cardIndexInHand, computerHand, computerBoard);
+            calculateScores(); // Update scores after playing
+        }
     }
 
-    private static boolean computerStand(){
-        // to-do
-        return true;
+    private static Card selectBestCardForComputer() {
+        int computerDistanceTo20 = 20 - computerScore;
+        int playerDistanceTo20 = 20 - userScore;
+        Card bestCard = null;
+        int bestScoreImpact = Integer.MIN_VALUE;
+    
+        for (Card card : computerHand) {
+            if (card != null) {
+                int scoreImpact = calculateCardScoreImpact(card, computerScore, computerDistanceTo20, playerDistanceTo20);
+                if (scoreImpact > bestScoreImpact) {
+                    bestScoreImpact = scoreImpact;
+                    bestCard = card;
+                }
+            }
+        }
+        return bestCard;
     }
-
-    //fix, her seferinde baştan yaratıp tek oyun kaydediyor, bence listede tutmaya gerek yok
-    // bir de date format düzelmesi lazım
-    private static void saveGameHistoryToFile(String playerName, int playerScore, int computerScore) {
-        GameHistory gameHistory = new GameHistory(playerName, playerScore, computerScore, new Date());
-
-        // Add the new entry
-        gameHistoryList.add(0, gameHistory);
-
-        if (gameHistoryList.size() > 10) {
-            gameHistoryList = gameHistoryList.subList(0, 10);
+    
+    private static int calculateCardScoreImpact(Card card, int currentScore, int computerDistanceTo20,int playerDistanceTo20) {
+        int scoreImpact = 0;
+        int cardValue = card.getValue();
+        String cardSign = card.getSign();
+    
+        switch (cardSign) {
+            case "+":
+                scoreImpact = cardValue; // Positive impact on the score
+                break;
+            case "-":
+                scoreImpact = -cardValue; // Negative impact on the score
+                break;
+            case "x2":
+                // Doubling the score can be good or bad depending on the current score
+                scoreImpact = (currentScore + cardValue) * 2 - currentScore;
+                break;
+            case "+/-":
+                // Flipping the score's sign
+                scoreImpact = -currentScore;
+                break;
+            default:
+                // Normal card with no special effect
+                scoreImpact = cardValue;
+                break;
+        }
+    
+        // Adjusting the impact based on proximity to 20
+        int projectedScore = currentScore + scoreImpact;
+        if (projectedScore > 20) {
+            // Negative impact if it causes the score to exceed 20
+            scoreImpact -= (projectedScore - 20) * 2;
         }
 
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("game_history.txt"))) {
-            // Write the updated game history back to the file
-            for (GameHistory history : gameHistoryList) {
-                writer.write(history.toString());
-                writer.newLine();
+        if (computerDistanceTo20 <= 3) {
+            // Play cautiously if close to 20
+            if (cardSign.equals("+") && cardValue > computerDistanceTo20) {
+                scoreImpact -= cardValue;  // Prefer not to exceed 20
             }
+        } else if (playerDistanceTo20 <= 3) {
+            // Play aggressively if the player is close to winning
+            if (cardSign.equals("+")) {
+                scoreImpact += cardValue;  // Try to catch up
+            }
+        }
+    
+        return scoreImpact;
+    }    
+    
+    private static int findCardIndexInHand(Card card, Card[] hand) {
+        for (int i = 0; i < hand.length; i++) {
+            if (hand[i] != null && hand[i].equals(card)) {
+                return i;
+            }
+        }
+        return -1; // Return -1 if the card is not found
+    }    
+
+    private static boolean computerStand() {
+        int computerDistanceTo20 = 20 - computerScore;
+        int playerDistanceTo20 = 20 - userScore;
+    
+        // Simple strategy: Stand if the score is close to 20 or if the risk of busting is high
+        if (computerDistanceTo20 <= 3 || (computerDistanceTo20 < playerDistanceTo20 && computerDistanceTo20 < 5)) {
+            return true;
+        }
+        
+        return false; // Continue playing otherwise
+    }
+    
+
+    private static void saveGameHistoryToFile(String playerName, int playerScore, int computerScore) {
+        File file = new File("game_history.txt");
+        List<String> lines = new ArrayList<>();
+        try {
+            if (file.exists()) {
+                lines = Files.readAllLines(file.toPath());
+                if (lines.size() >= 10) {
+                    lines.remove(0);
+                }
+            }
+            GameHistory gameHistory = new GameHistory(playerName, playerScore, computerScore, new Date());
+            lines.add(gameHistory.toString());
+            Files.write(file.toPath(), lines, StandardCharsets.UTF_8);
         } catch (IOException e) {
             e.printStackTrace();
         }
