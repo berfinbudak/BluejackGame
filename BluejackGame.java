@@ -5,6 +5,20 @@ import java.util.List;
 import java.util.Random;
 import java.util.Scanner;
 
+// commentleme 
+
+// github açma?
+
+// history kaydetme işi, file oluşturuyor ama yanlış şekilde, bir de yöntem düzeltmek gerekebilir
+
+// computer mantıklı oynamalıymış, random değil
+
+// bilgisayarın elini gizleme (kart sayısı kadar X)
+
+// henüz sadece bir set için program 
+// The first player to win three sets is the winner. 
+// However, if one of the players uses all blue cards to get a score of 20,they automatically win the game. 
+
 public class BluejackGame {
 
     private static int DECK_SIZE = 40;
@@ -25,7 +39,7 @@ public class BluejackGame {
 
     static Random random = new Random();
     private static String name = "";
-    private static List<GameHistory> gameHistoryList = new ArrayList<>(); 
+    private static List<GameHistory> gameHistoryList = new ArrayList<>(); // array list kullanabilir miyim
     
     public static void main(String[] args) {
         
@@ -57,6 +71,8 @@ public class BluejackGame {
         System.out.println("Game Over");
         showScores();
         calculateWinner();
+
+        /////buradaki set-game ilişkisini halletmek lazım önce
 
         saveGameHistoryToFile(name, userScore, computerScore);
     }
@@ -167,6 +183,7 @@ public class BluejackGame {
         }
     }
     
+    // Helper method to remove a card from the deck
     private static Card[] removeCardFromDeck(Card[] deck, int index) {
         Card[] newDeck = new Card[deck.length - 1];
         System.arraycopy(deck, 0, newDeck, 0, index);
@@ -307,7 +324,7 @@ public class BluejackGame {
             System.out.println();
 
             System.out.println("Computer Hand: ");
-            printDeck(computerHand); 
+            printDeck(computerHand); // gizlemek için burada değişiklik yapılabilir, şimdilik bilerek yapmıyorum
             System.out.println();
 
             
@@ -412,7 +429,7 @@ public class BluejackGame {
     }
 
     private static void computerPlays(){
-        //to-do
+        //to-do, mantıklı oynaması lazım
     }
 
     private static boolean computerStand(){
@@ -420,9 +437,12 @@ public class BluejackGame {
         return true;
     }
 
+    //fix, her seferinde baştan yaratıp tek oyun kaydediyor, bence listede tutmaya gerek yok
+    // bir de date format düzelmesi lazım
     private static void saveGameHistoryToFile(String playerName, int playerScore, int computerScore) {
         GameHistory gameHistory = new GameHistory(playerName, playerScore, computerScore, new Date());
 
+        // Add the new entry
         gameHistoryList.add(0, gameHistory);
 
         if (gameHistoryList.size() > 10) {
@@ -430,7 +450,7 @@ public class BluejackGame {
         }
 
         try (BufferedWriter writer = new BufferedWriter(new FileWriter("game_history.txt"))) {
-  
+            // Write the updated game history back to the file
             for (GameHistory history : gameHistoryList) {
                 writer.write(history.toString());
                 writer.newLine();
