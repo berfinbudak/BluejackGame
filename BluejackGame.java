@@ -7,14 +7,11 @@ import java.util.List;
 import java.util.Random;
 import java.util.Scanner;
 
-// github açma?
-
-// The first player to win three sets is the winner. 
-// However, if one of the players uses all blue cards to get a score of 20, they automatically win the game. 
-
-// file log
+// user stand case çalışmıyor
+// arraylist yerine array
 
 public class BluejackGame {
+
     private static int DECK_SIZE = 40;
     private static int BOARD_SIZE = 10;
     private static int HAND_SIZE = 4;
@@ -33,39 +30,60 @@ public class BluejackGame {
 
     static Random random = new Random();
     private static String name = "";
+    private static int overallUser = 0;
+    private static int overallComp = 0;
     
     public static void main(String[] args) {
         Scanner scan = new Scanner( System.in);
-
-        initializeGameDeck();
-        shuffleGameDeck();
-        dealDecks();
-
+        
         System.out.println("\nWelcome to BlueJack");
 
         System.out.println( "What is your name?");
-            name = scan.nextLine();
+        name = scan.nextLine();
+        
+        do { 
+            //round start
+            gameDeck = new Card[DECK_SIZE];
+            computerDeck = new Card[BOARD_SIZE];
+            userDeck = new Card[BOARD_SIZE];
 
-        System.out.println("\n--------------------\n");
+            computerHand = new Card[HAND_SIZE];
+            userHand = new Card[HAND_SIZE];
 
-        System.out.println("Computer Deck");
-        printComputerDeck(computerDeck);
+            userBoard = new Card[9];
+            computerBoard = new Card[9];
+            initializeGameDeck();
+            shuffleGameDeck();
+            dealDecks();
 
-        System.out.println("\n" + name + "'s Deck:");
-        printDeck(userDeck);
+            System.out.println("\n--------------------\n");
 
-        dealHands();
-        System.out.println("\n--------------------\n");
+            System.out.println("Computer Deck");
+            printComputerDeck(computerDeck);
 
-        playRound();
+            System.out.println("\n" + name + "'s Deck:");
+            printDeck(userDeck);
 
-        System.out.println("\n--------------------\n");
-        System.out.println("Game Over");
-        showScores();
-        calculateWinner();
+            dealHands();
+            System.out.println("\n--------------------\n");
 
-        /////buradaki set-game ilişkisini halletmek lazım önce
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("game_history.txt"))) {
+            playRound();
+
+            System.out.println("Round Over");
+            showScores();
+            String s = calculateWinner();
+            //round end
+
+            calculateOverall(s);
+        } while (overallComp < 3 && overallUser < 3 && playRound()!=-1);
+        // game end
+
+        // print game results
+        System.out.println("\n======================");
+        System.out.println("GAME RESULTS:");
+        System.out.println(name + ":" + overallUser + " - Computer:" + overallComp);
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter("game_history.txt", true))) {
             saveGameHistoryToFile(name, userScore, computerScore);
         } catch (IOException e) {
             e.printStackTrace();
@@ -307,7 +325,7 @@ public class BluejackGame {
         System.out.println("Computer: " + computerScore);
     }
 
-    private static void playRound(){
+    private static int playRound(){
         Scanner scan = new Scanner( System.in);
         int selection;
 
@@ -402,7 +420,7 @@ public class BluejackGame {
                 showScores();
 
             else if ( selection == MENU_EXIT )
-                break;
+                return -1;
             else
                 System.out.println("Unvalid choice, please try again");
 
@@ -411,23 +429,68 @@ public class BluejackGame {
 
         } while ( selection != MENU_EXIT || !isGameOver() );
 
-        scan.close();
-        return;
+        return 0;
     }
 
-    private static void calculateWinner(){
-        if ( userScore >= 20 )
-            System.out.println("Computer won! You exceeded 20, bust!");
-        else if (computerScore >= 20)
-            System.out.println(name + " won! Computer exceeded 20, bust!");
-        else if (computerScore >= 20 && userScore >= 20 )
-            System.out.println("Tie! You both exceeded 20 at the same round");
-        else if (Math.abs(20 - userScore) > Math.abs(20 - computerScore))
-            System.out.println("Computer won! It's score was closer to 20");
-        else if (Math.abs(20 - userScore) < Math.abs(20 - computerScore))
-            System.out.println(name + " won! Your score was closer to 20");
-        else
-            System.out.println("An unexpected case occured, please try to re-run the game");
+    private static String calculateWinner(){
+        if ( userScore > 20 && computerScore < 20 ) {
+            System.out.println("Computer won! You exceeded 20, bust! 😁");
+            return "C";
+        }
+        else if (computerScore > 20 && userScore < 20 ){
+            System.out.println(name + " won! Computer exceeded 20, bust! 😁");
+            return "U";
+        }
+        else if (computerScore > 20 && userScore > 20 ){
+            System.out.println("Tie! You both exceeded 20 at the same round 😁");
+            return "T";
+        }
+        else if (Math.abs(20 - userScore) > Math.abs(20 - computerScore)){
+
+            boolean isBlue = true;
+
+            if (computerScore == 20){
+                for(int i=0; i<computerBoard.length; i++ ){
+                    if (computerBoard[i] != null && !computerBoard[i].getColor().equals("blue")){
+                        isBlue = false;
+                        break;
+                    }
+                }
+                if (isBlue = true ){
+                    System.out.println("Bluejack for Computer!");
+                    overallComp = 3;
+                }
+            } else {
+                System.out.println("Computer won! It's score was closer to 20 😁");
+            }
+
+            return "C";
+        }
+        else if (Math.abs(20 - userScore) < Math.abs(20 - computerScore)){
+
+            boolean isBlue = true;
+            
+            if (userScore == 20){
+                for(int i=0; i<userBoard.length; i++ ){
+                    if (userBoard[i] != null && !userBoard[i].getColor().equals("blue")){
+                        isBlue=false;
+                        break;
+                    }
+                }
+                if (isBlue = true ){
+                    System.out.println("Bluejack for " + name + "Computer!");
+                    overallUser = 3;
+                }
+            } else {
+                System.out.println(name + " won! Your score was closer to 20 😁");
+            }
+
+            return "U";
+        }
+        else{
+            System.out.println("Tie! 😁");
+            return "T";
+        }
     }
 
     private static void computerPlays(){
@@ -515,14 +578,13 @@ public class BluejackGame {
                 return i;
             }
         }
-        return -1; // Return -1 if the card is not found
+        return -1; 
     }    
 
     private static boolean computerStand() {
         int computerDistanceTo20 = 20 - computerScore;
         int playerDistanceTo20 = 20 - userScore;
     
-        // Simple strategy: Stand if the score is close to 20 or if the risk of busting is high
         if (computerDistanceTo20 <= 3 || (computerDistanceTo20 < playerDistanceTo20 && computerDistanceTo20 < 5)) {
             return true;
         }
@@ -534,18 +596,40 @@ public class BluejackGame {
     private static void saveGameHistoryToFile(String playerName, int playerScore, int computerScore) {
         File file = new File("game_history.txt");
         List<String> lines = new ArrayList<>();
+    
         try {
+            // Check if file exists and read its contents
             if (file.exists()) {
-                lines = Files.readAllLines(file.toPath());
-                if (lines.size() >= 10) {
-                    lines.remove(0);
-                }
+                lines = Files.readAllLines(file.toPath(), StandardCharsets.UTF_8);
             }
-            GameHistory gameHistory = new GameHistory(playerName, playerScore, computerScore, new Date());
+    
+            // Add the new game history at the end of the list
+            GameHistory gameHistory = new GameHistory(playerName, overallUser, overallComp, new Date());
             lines.add(gameHistory.toString());
+    
+            // Keep only the last 10 entries
+            if (lines.size() > 10) {
+                lines = lines.subList(lines.size() - 10, lines.size());
+            }
+    
+            // Write the updated list back to the file
             Files.write(file.toPath(), lines, StandardCharsets.UTF_8);
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }    
+
+    private static void calculateOverall(String s){
+        while(overallComp<3 && overallUser<3){
+            if ( s.equals("C")){
+                overallComp++;
+            }
+            else if (s.equals("U")){
+                overallUser++;
+            } 
+            else //tie
+                return;
+        }
     }
+    
 }
